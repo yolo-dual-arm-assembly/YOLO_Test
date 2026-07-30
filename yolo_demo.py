@@ -10,6 +10,7 @@ from tkinter import messagebox, ttk
 
 from PIL import Image, ImageOps, ImageTk
 from ultralytics import YOLO
+from ultralytics.utils.downloads import attempt_download_asset
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -22,9 +23,28 @@ MODEL_OPTIONS = {
     "YOLOv8m (Advanced · 정확도와 속도의 균형 · 일반 객체 탐지에 적합)": "yolov8m.pt",
     "YOLO11m-seg (Advanced · 객체 윤곽 마스크 · 정밀 영역 분할에 특화)": "yolo11m-seg.pt",
 }
+MODEL_FILENAMES = tuple(dict.fromkeys(MODEL_OPTIONS.values()))
 DEFAULT_MODEL_LABEL = next(
     label for label, filename in MODEL_OPTIONS.items() if filename == "yolo11m-seg.pt"
 )
+
+
+def missing_model_paths(project_dir: Path | None = None) -> list[Path]:
+    """Return model paths that must be downloaded before analysis."""
+    root = PROJECT_DIR if project_dir is None else project_dir
+    return [
+        root / filename
+        for filename in MODEL_FILENAMES
+        if not (root / filename).is_file()
+    ]
+
+
+def download_model(model_path: Path) -> Path:
+    """Download one official Ultralytics model to its project path."""
+    downloaded_path = Path(attempt_download_asset(model_path))
+    if not downloaded_path.is_file():
+        raise FileNotFoundError(f"모델 다운로드에 실패했습니다: {model_path.name}")
+    return downloaded_path
 
 
 class _ConsoleStream:
@@ -78,7 +98,7 @@ class YoloViewer(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(100, self._drain_console)
         self.refresh_images()
-        self.after(100, self._start_initial_analysis)
+        self.after(100, self._prepare_models)
 
     def _build_ui(self) -> None:
         self.columnconfigure(1, weight=1)
@@ -272,6 +292,75 @@ class YoloViewer(tk.Tk):
             self.show_selected()
         else:
             self.status.set(f"입력 이미지가 없습니다: {INPUT_DIR}")
+
+    def _prepare_models(self) -> None:
+        missing_models = missing_model_paths()
+        if not missing_models:
+            self._start_initial_analysis()
+            return
+
+        self.processing = True
+        self._set_buttons_enabled(False)
+        self.progress.configure(maximum=len(missing_models), value=0)
+        self.status.set(f"누락 모델 {len(missing_models)}개 다운로드 준비 중...")
+        print(
+            "[model download start] "
+            + ", ".join(model_path.name for model_path in missing_models)
+        )
+        threading.Thread(
+            target=self._download_models_worker,
+            args=(missing_models,),
+            daemon=True,
+        ).start()
+
+    def _download_models_worker(self, model_paths: list[Path]) -> None:
+        try:
+            for index, model_path in enumerate(model_paths, start=1):
+                self.after(
+                    0,
+                    self.status.set,
+                    f"[{index}/{len(model_paths)}] 다운로드 중: {model_path.name}",
+                )
+                download_model(model_path)
+                print(
+                    f"[{index}/{len(model_paths)}] model ready: {model_path.name}"
+                )
+                self.after(
+                    0,
+                    self._model_download_progress,
+                    index,
+                    len(model_paths),
+                    model_path.name,
+                )
+            self.after(0, self._model_download_finished, len(model_paths))
+        except Exception as error:
+            traceback.print_exc()
+            self.after(0, self._model_download_failed, str(error))
+
+    def _model_download_progress(
+        self, current: int, total: int, model_name: str
+    ) -> None:
+        self.progress.configure(value=current)
+        self.status.set(f"[{current}/{total}] 모델 준비 완료: {model_name}")
+
+    def _model_download_finished(self, count: int) -> None:
+        self.processing = False
+        self._set_buttons_enabled(True)
+        self.progress.configure(value=count)
+        self.status.set(f"모델 다운로드 완료: {count}개")
+        print(f"[model download complete] models={count}")
+        self.after(100, self._start_initial_analysis)
+
+    def _model_download_failed(self, error: str) -> None:
+        self.processing = False
+        self._set_buttons_enabled(True)
+        self.progress.configure(value=0)
+        self.status.set("모델 다운로드 중 오류가 발생했습니다.")
+        messagebox.showerror(
+            "모델 다운로드 오류",
+            "인터넷 연결을 확인한 뒤 프로그램을 다시 실행해 주세요.\n\n"
+            f"{error}",
+        )
 
     def _start_initial_analysis(self) -> None:
         if not self.image_paths:

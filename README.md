@@ -8,8 +8,7 @@
 
 - Windows 10 또는 Windows 11
 - 64비트 Python 3.13 권장
-- 인터넷 연결(최초 패키지 설치 시 필요)
-- 프로젝트에 포함된 YOLO 모델 파일
+- 인터넷 연결(최초 패키지 및 모델 설치 시 필요)
 
 이 프로젝트는 Python 3.13 기준으로 사용합니다. MSYS2의 Python이나 아직 패키지
 지원이 충분하지 않은 새 Python 버전 대신
@@ -23,15 +22,14 @@ Launcher 설치 항목을 선택합니다.
 YOLO_Test/
 ├─ yolo_demo.py
 ├─ requirements.txt
-├─ yolov8n.pt
-├─ yolov8m.pt
-├─ yolo11m-seg.pt
+├─ tests/
 ├─ object/
 └─ result/
 ```
 
-`object`와 `result` 폴더는 프로그램이 없으면 자동으로 만들지만, 모델 파일은
-자동으로 다운로드하지 않습니다.
+`object`와 `result` 폴더는 프로그램이 없으면 자동으로 만듭니다. 모델 파일
+`yolov8n.pt`, `yolov8m.pt`, `yolo11m-seg.pt`가 없으면 프로그램을 처음 실행할 때
+Ultralytics 공식 배포본을 프로젝트 최상위 폴더에 자동으로 다운로드합니다.
 
 ## 2. 프로젝트 폴더에서 PowerShell 열기
 
@@ -135,8 +133,8 @@ python -m tkinter
 - `.jpeg`
 - `.bmp`
 
-모델 파일 `yolov8n.pt`, `yolov8m.pt`, `yolo11m-seg.pt`는
-`yolo_demo.py`와 같은 폴더에 있어야 합니다.
+모델 파일은 처음 실행할 때 자동으로 준비되며, 이후에는 다운로드한 파일을
+재사용합니다.
 
 ## 6. 프로그램 실행
 
@@ -149,6 +147,10 @@ python .\yolo_demo.py
 프로그램을 실행하면 `object` 폴더의 이미지 목록이 왼쪽에 표시됩니다. 이미지를
 선택하면 오른쪽에서 원본과 분석 결과를 비교할 수 있습니다. 기존 결과가 있으면
 시작할 때 유지할지 다시 분석할지 묻습니다.
+
+처음 실행할 때 모델 파일이 없으면 GUI 하단 콘솔에 다운로드 진행 상황이
+표시됩니다. 세 모델을 모두 준비한 뒤 분석을 시작하므로 첫 실행에는 인터넷 연결과
+추가 시간이 필요합니다. 이미 존재하는 모델 파일은 다시 다운로드하지 않습니다.
 
 상단의 모델 선택 목록에서 다음 모델을 전환할 수 있습니다.
 
@@ -210,8 +212,18 @@ result/
 
 ### 모델 파일이 없다는 메시지
 
-선택한 `.pt` 파일이 `yolo_demo.py`와 같은 폴더에 있는지 확인합니다. 파일명을
-임의로 바꾸면 프로그램이 찾지 못합니다.
+프로그램 시작 시 누락된 모델은 자동으로 다운로드합니다. 다운로드 오류가
+표시되면 인터넷 연결과 디스크 여유 공간을 확인한 뒤 프로그램을 다시 실행합니다.
+파일명을 임의로 바꾸면 프로그램이 찾지 못합니다.
+
+자동 다운로드가 계속 실패하면 프로젝트 폴더에서 다음 명령을 실행해 모델을
+수동으로 준비할 수 있습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
+.\.venv\Scripts\python.exe -c "from ultralytics import YOLO; YOLO('yolov8m.pt')"
+.\.venv\Scripts\python.exe -c "from ultralytics import YOLO; YOLO('yolo11m-seg.pt')"
+```
 
 ### 입력 이미지가 없다는 메시지
 
@@ -238,4 +250,11 @@ python -m pip --version
 
 ```powershell
 python -m py_compile .\yolo_demo.py
+```
+
+자동 다운로드 로직의 단위 테스트는 다음과 같이 실행합니다.
+
+```powershell
+python -m pip install pytest
+python -m pytest -q
 ```
