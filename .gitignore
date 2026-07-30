@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local YOLO models and workspace-specific tool settings
+*.pt
+.vscode/
+.claude/
+.codex/
+.agents/
+
+# Keep only the empty input/output directories in Git.
+object/*
+!object/.gitkeep
+result/*
+!result/.gitkeep
