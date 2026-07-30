@@ -1,40 +1,241 @@
-# YOLO 이미지 분석 데모
+# YOLO 이미지 분석 도구
 
-`object` 폴더의 이미지를 YOLO11 세그멘테이션 모델로 분석하고
-시각화 결과를 `result` 폴더에 저장하는 GUI 프로그램입니다.
+`object` 폴더의 이미지를 YOLO 모델로 분석하고, 원본 이미지와 분석 결과를
+나란히 보여 주는 Windows용 Tkinter GUI 프로그램입니다. 분석 결과는 모델별로
+`result` 폴더에 저장됩니다.
 
-## 개발 환경
+## 1. 준비 사항
 
-- Windows
-- Python 3.13
-- 프로젝트 전용 가상환경: `.venv`
+- Windows 10 또는 Windows 11
+- 64비트 Python 3.13 권장
+- 인터넷 연결(최초 패키지 설치 시 필요)
+- 프로젝트에 포함된 YOLO 모델 파일
 
-## 실행
+이 프로젝트는 Python 3.13 기준으로 사용합니다. MSYS2의 Python이나 아직 패키지
+지원이 충분하지 않은 새 Python 버전 대신
+[python.org](https://www.python.org/downloads/)에서 설치한 64비트 Python 3.13을
+권장합니다. Python 설치 화면에서는 `Add python.exe to PATH` 또는 Python
+Launcher 설치 항목을 선택합니다.
 
-PowerShell에서 다음 명령을 실행합니다.
+프로젝트 최상위 폴더에는 최소한 다음 파일과 폴더가 있어야 합니다.
+
+```text
+YOLO_Test/
+├─ yolo_demo.py
+├─ requirements.txt
+├─ yolov8n.pt
+├─ yolov8m.pt
+├─ yolo11m-seg.pt
+├─ object/
+└─ result/
+```
+
+`object`와 `result` 폴더는 프로그램이 없으면 자동으로 만들지만, 모델 파일은
+자동으로 다운로드하지 않습니다.
+
+## 2. 프로젝트 폴더에서 PowerShell 열기
+
+파일 탐색기에서 프로젝트 폴더를 연 뒤 주소 표시줄에 `powershell`을 입력하거나,
+PowerShell에서 직접 프로젝트 폴더로 이동합니다.
+
+```powershell
+Set-Location "C:\프로젝트를\저장한\경로\YOLO_Test"
+```
+
+현재 위치가 맞는지 확인합니다.
+
+```powershell
+Get-Location
+Get-ChildItem
+```
+
+출력 목록에 `yolo_demo.py`와 `requirements.txt`가 보여야 합니다. 프로젝트 복사본이
+여러 개 있다면, 패키지를 설치한 폴더와 프로그램을 실행하는 폴더가 같은지 특히
+확인하십시오.
+
+## 3. 가상환경 만들기
+
+설치된 Python 목록을 확인합니다.
+
+```powershell
+py -0p
+```
+
+Python 3.13으로 프로젝트 전용 가상환경을 만듭니다.
+
+```powershell
+py -3.13 -m venv .venv
+```
+
+가상환경을 활성화합니다.
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
+```
+
+PowerShell 실행 정책 때문에 활성화가 차단되면 현재 PowerShell 창에서만 정책을
+완화한 뒤 다시 활성화합니다.
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+활성화되면 명령 프롬프트 앞에 `(.venv)`가 표시됩니다.
+
+## 4. 패키지 설치
+
+반드시 프로젝트 폴더에서 다음 명령을 실행합니다.
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r .\requirements.txt
+```
+
+설치가 끝난 뒤 현재 Python과 `pip`가 모두 `.venv`를 가리키는지 확인합니다.
+
+```powershell
+python -c "import sys; print(sys.executable)"
+python -m pip --version
+```
+
+두 출력 경로에 모두 프로젝트의 `.venv`가 포함되어 있어야 합니다. 이어서 주요
+패키지를 실제로 import할 수 있는지 확인합니다.
+
+```powershell
+python -c "from PIL import Image; from ultralytics import YOLO; print('의존성 확인 완료')"
+python -m tkinter
+```
+
+마지막 명령을 실행했을 때 작은 Tk 창이 나타나면 GUI 실행 준비가 끝난 것입니다.
+
+### 가상환경을 활성화하지 않고 설치하는 방법
+
+활성화 과정이 번거롭거나 셸 설정의 영향을 피하고 싶다면 가상환경의 Python을
+직접 지정해도 됩니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+```
+
+이 방식을 사용했다면 실행할 때도 같은 Python을 직접 지정합니다.
+
+```powershell
+.\.venv\Scripts\python.exe .\yolo_demo.py
+```
+
+## 5. 분석할 이미지 준비
+
+분석할 이미지를 프로젝트의 `object` 폴더에 넣습니다. 지원 확장자는 다음과
+같습니다.
+
+- `.png`
+- `.jpg`
+- `.jpeg`
+- `.bmp`
+
+모델 파일 `yolov8n.pt`, `yolov8m.pt`, `yolo11m-seg.pt`는
+`yolo_demo.py`와 같은 폴더에 있어야 합니다.
+
+## 6. 프로그램 실행
+
+가상환경이 활성화된 PowerShell에서 실행합니다.
+
+```powershell
 python .\yolo_demo.py
 ```
 
-왼쪽 스크롤 목록에서 이미지를 선택하면 오른쪽에서 변환 전·후 이미지를
-나란히 비교할 수 있습니다. 기존 분석 결과가 있으면 시작할 때 생략 여부를
-Yes/No 창으로 묻습니다. 두 이미지 사이의 `이 이미지만 다시 분석` 버튼을
-누르면 현재 선택한 이미지 하나만 모델로 다시 분석합니다. 버튼 아래의 전용
-진행률 표시에서 진행 중인지, 결과가 저장되어 100% 완료됐는지 확인할 수 있습니다.
+프로그램을 실행하면 `object` 폴더의 이미지 목록이 왼쪽에 표시됩니다. 이미지를
+선택하면 오른쪽에서 원본과 분석 결과를 비교할 수 있습니다. 기존 결과가 있으면
+시작할 때 유지할지 다시 분석할지 묻습니다.
 
-상단 모델 드롭다운에서 다음 모델을 전환할 수 있습니다.
+상단의 모델 선택 목록에서 다음 모델을 전환할 수 있습니다.
 
 - `yolov8n.pt`: 가장 가볍고 빠른 객체 탐지 모델
-- `yolov8m.pt`: 정확도와 속도의 균형을 중시한 객체 탐지 모델
-- `yolo11m-seg.pt`: 객체별 윤곽 마스크를 생성하는 인스턴스 세그멘테이션 모델
+- `yolov8m.pt`: 속도와 정확도의 균형을 고려한 객체 탐지 모델
+- `yolo11m-seg.pt`: 객체별 마스크를 생성하는 인스턴스 세그멘테이션 모델
 
-분석 결과는 `result/<모델 이름>/` 폴더에 나뉘어 저장되므로 모델을 전환해도
-다른 모델의 결과를 덮어쓰지 않습니다.
+결과 파일은 다음 형식의 폴더에 저장됩니다.
 
-패키지를 다시 설치해야 하는 경우:
+```text
+result/
+├─ yolov8n/
+├─ yolov8m/
+└─ yolo11m-seg/
+```
+
+모델별 폴더가 분리되어 있으므로 모델을 전환해도 다른 모델의 결과를 덮어쓰지
+않습니다.
+
+## 7. 자주 발생하는 오류
+
+### `ModuleNotFoundError: No module named 'PIL'`
+
+`PIL`은 `Pillow` 패키지가 제공하는 모듈입니다. 대부분 패키지를 설치한 Python과
+프로그램을 실행한 Python이 서로 다를 때 이 오류가 발생합니다. 프로젝트 폴더에서
+가상환경의 Python을 명시해 다시 설치하고 실행합니다.
 
 ```powershell
-python -m pip install -r .\requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+.\.venv\Scripts\python.exe -c "from PIL import Image; print('Pillow 정상')"
+.\.venv\Scripts\python.exe .\yolo_demo.py
+```
+
+`pip install ...`처럼 `pip`만 단독으로 실행하지 말고, 항상
+`python -m pip ...` 또는 `.\.venv\Scripts\python.exe -m pip ...` 형식을
+사용하십시오.
+
+### `ModuleNotFoundError: No module named 'ultralytics'`
+
+현재 실행 중인 Python에 의존성이 설치되지 않은 상태입니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+```
+
+설치 중 오류가 발생했다면 마지막 오류 메시지를 확인합니다. Python 버전과 경로는
+다음 명령으로 확인할 수 있습니다.
+
+```powershell
+.\.venv\Scripts\python.exe --version
+.\.venv\Scripts\python.exe -m pip --version
+```
+
+### `No module named '_tkinter'` 또는 GUI 창이 열리지 않음
+
+현재 Python에 Tkinter가 포함되지 않았을 수 있습니다. python.org의 Windows용
+64비트 Python 3.13을 설치할 때 `tcl/tk and IDLE` 항목을 포함한 뒤 가상환경을
+다시 만드십시오.
+
+### 모델 파일이 없다는 메시지
+
+선택한 `.pt` 파일이 `yolo_demo.py`와 같은 폴더에 있는지 확인합니다. 파일명을
+임의로 바꾸면 프로그램이 찾지 못합니다.
+
+### 입력 이미지가 없다는 메시지
+
+이미지를 `yolo_demo.py` 옆이 아니라 `object` 폴더 안에 넣었는지, 파일 확장자가
+지원 목록에 포함되는지 확인한 뒤 프로그램을 다시 실행합니다.
+
+### 설치는 했는데 계속 같은 모듈 오류가 발생함
+
+아래 두 명령의 경로가 같은 Python 환경을 가리키는지 비교합니다.
+
+```powershell
+python -c "import sys; print(sys.executable)"
+python -m pip --version
+```
+
+예를 들어 프로그램은 `C:\msys64\ucrt64\bin\python3.14.exe`로 실행하면서 패키지는
+다른 Python 또는 `.venv`에 설치했다면 모듈을 찾을 수 없습니다. VS Code를
+사용한다면 `Python: Select Interpreter`에서 프로젝트의
+`.venv\Scripts\python.exe`를 선택하십시오.
+
+## 8. 개발 확인
+
+코드를 수정한 뒤에는 최소한 문법 검사를 실행합니다.
+
+```powershell
+python -m py_compile .\yolo_demo.py
 ```
