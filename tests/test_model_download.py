@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+import yolo_app.models
 import yolo_demo
 
 
@@ -30,7 +31,7 @@ def test_download_model_returns_downloaded_file(
         path.write_bytes(b"model")
         return str(path)
 
-    monkeypatch.setattr(yolo_demo, "attempt_download_asset", fake_download)
+    monkeypatch.setattr(yolo_app.models, "attempt_download_asset", fake_download)
 
     assert yolo_demo.download_model(model_path) == model_path
 
@@ -40,7 +41,7 @@ def test_download_model_raises_when_file_was_not_created(
 ) -> None:
     model_path = tmp_path / "yolov8n.pt"
     monkeypatch.setattr(
-        yolo_demo,
+        yolo_app.models,
         "attempt_download_asset",
         lambda path: str(path),
     )

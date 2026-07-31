@@ -4,14 +4,17 @@
 
 The application is a small Python/Tkinter YOLO image-analysis tool.
 
-- `yolo_demo.py`: GUI, model loading, inference, previews, and result handling.
+- `yolo_demo.py`: thin backward-compatible entry point that re-exports from `yolo_app`.
+- `yolo_app/`: application package — `config.py` (paths and constants), `models.py` (model specs and download logic), `analysis.py` (pure inference loop), `console.py` (GUI console widgets and stdout redirection), `viewer.py` (Tkinter `YoloViewer` and `main`).
+- `train_model.py`: CLI script that fine-tunes a base model on `train_set/` (argparse; defaults reproduce the original run).
+- `train_set/`: local training dataset in YOLO detection format (`data.yaml`, images, labels).
+- `tests/`: pytest suite for non-UI logic.
 - `object/`: input images displayed and analyzed by the application.
 - `result/`: generated detection and segmentation images, grouped by model.
-- `dashboard.html` and `run_a.csv`: standalone robot telemetry dashboard and its source log.
 - `*.pt`: local YOLO model weights.
-- `requirements.txt`: pinned Python dependency entry point.
+- `requirements.txt` / `pyproject.toml`: pinned runtime dependencies; `pyproject.toml` also declares the `dev` extra (pytest) and pytest configuration.
 
-Keep reusable Python logic near the top-level application until a module has a clear, independent responsibility. If the code grows, place modules under `src/` and tests under `tests/`.
+Keep new logic in the matching `yolo_app` module; add a new module only when it has a clear, independent responsibility.
 
 ## Build, Test, and Development Commands
 
@@ -29,10 +32,11 @@ Run the desktop application with:
 python .\yolo_demo.py
 ```
 
-Open `dashboard.html` directly in a browser to inspect telemetry visualizations. Before submitting changes, compile-check Python with:
+Before submitting changes, compile-check Python and run the tests with:
 
 ```powershell
-python -m py_compile .\yolo_demo.py
+python -m compileall yolo_app yolo_demo.py train_model.py
+python -m pytest -q
 ```
 
 ## Coding Style & Naming Conventions
@@ -43,10 +47,10 @@ Use UTF-8 for Python, Markdown, CSV, and HTML files. Verify Korean UI text after
 
 ## Testing Guidelines
 
-No automated test suite is currently configured. New non-UI logic should include `pytest` tests named `tests/test_<feature>.py`. For GUI or inference changes, manually verify model selection, single-image analysis, batch analysis, cached-result behavior, and clean application shutdown. Do not rely on generated files already present in `result/`.
+Run the pytest suite in `tests/` with `python -m pytest -q` (install pytest via `python -m pip install pytest` or the `dev` extra). New non-UI logic should include `pytest` tests named `tests/test_<feature>.py`. For GUI or inference changes, manually verify model selection, single-image analysis, batch analysis, cached-result behavior, and clean application shutdown. Do not rely on generated files already present in `result/`.
 
 ## Commit & Pull Request Guidelines
 
-No usable local Git history is available, so use concise imperative commits such as `Add telemetry playback controls` or `Fix cached preview refresh`. Keep unrelated changes in separate commits.
+Use concise imperative commits such as `Add telemetry playback controls` or `Fix cached preview refresh`, consistent with the existing history. Keep unrelated changes in separate commits.
 
 Pull requests should describe behavior changes, manual test steps, and any model or data assumptions. Include screenshots for GUI or dashboard changes and link related issues. Avoid committing `.venv/`, caches, generated results, private images, or newly downloaded model weights; use Git LFS or release assets when weights must be distributed.

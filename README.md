@@ -19,10 +19,14 @@ Launcher 설치 항목을 선택합니다.
 프로젝트 최상위 폴더에는 최소한 다음 파일과 폴더가 있어야 합니다.
 
 ```text
-YOLO_Test/
+YOLO/
 ├─ yolo_demo.py
+├─ yolo_app/
+├─ train_model.py
 ├─ requirements.txt
+├─ pyproject.toml
 ├─ tests/
+├─ train_set/
 ├─ object/
 └─ result/
 ```
@@ -37,7 +41,7 @@ Ultralytics 공식 배포본을 프로젝트 최상위 폴더에 자동으로 �
 PowerShell에서 직접 프로젝트 폴더로 이동합니다.
 
 ```powershell
-Set-Location "C:\프로젝트를\저장한\경로\YOLO_Test"
+Set-Location "C:\프로젝트를\저장한\경로\YOLO"
 ```
 
 현재 위치가 맞는지 확인합니다.
@@ -154,14 +158,26 @@ python .\yolo_demo.py
 
 상단의 모델 선택 목록에서 다음 모델을 전환할 수 있습니다.
 
+- `best.pt` (Robot Custom): `train_model.py`로 직접 학습한 로봇 객체 탐지 모델.
+  파일이 있을 때만 목록에 표시됩니다.
 - `yolov8n.pt`: 가장 가볍고 빠른 객체 탐지 모델
 - `yolov8m.pt`: 속도와 정확도의 균형을 고려한 객체 탐지 모델
 - `yolo11m-seg.pt`: 객체별 마스크를 생성하는 인스턴스 세그멘테이션 모델
+
+`best.pt`는 자동 다운로드 대상이 아닙니다. `train_set` 데이터셋을 준비한 뒤
+다음 명령으로 학습하면 `runs/custom_detect/weights/best.pt`가 생성되며, 이를
+프로젝트 최상위 폴더에 복사하면 Robot Custom 모델이 활성화됩니다.
+
+```powershell
+python .\train_model.py
+python .\train_model.py --epochs 100 --batch 16  # 하이퍼파라미터 변경 예시
+```
 
 결과 파일은 다음 형식의 폴더에 저장됩니다.
 
 ```text
 result/
+├─ best/
 ├─ yolov8n/
 ├─ yolov8m/
 └─ yolo11m-seg/
@@ -249,10 +265,10 @@ python -m pip --version
 코드를 수정한 뒤에는 최소한 문법 검사를 실행합니다.
 
 ```powershell
-python -m py_compile .\yolo_demo.py
+python -m compileall yolo_app yolo_demo.py train_model.py
 ```
 
-자동 다운로드 로직의 단위 테스트는 다음과 같이 실행합니다.
+단위 테스트(모델 다운로드·분석 루프 로직)는 다음과 같이 실행합니다.
 
 ```powershell
 python -m pip install pytest

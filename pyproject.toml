@@ -1,0 +1,15 @@
+[project]
+name = "yolo-demo"
+version = "0.1.0"
+description = "object 폴더 이미지를 YOLO 모델로 분석해 원본/결과를 비교하는 Tkinter 데스크톱 도구"
+requires-python = ">=3.13"
+dependencies = [
+    "Pillow==11.3.0",
+    "ultralytics==8.4.102",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
