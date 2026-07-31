@@ -15,3 +15,15 @@ object/*
 !object/.gitkeep
 result/*
 !result/.gitkeep
+
+# Local training data and generated training runs
+train_set/images/train/*
+!train_set/images/train/.gitkeep
+train_set/images/val/*
+!train_set/images/val/.gitkeep
+train_set/labels/train/*
+!train_set/labels/train/.gitkeep
+train_set/labels/val/*
+!train_set/labels/val/.gitkeep
+train_set/labels/*.cache
+runs/

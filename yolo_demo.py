@@ -19,11 +19,16 @@ OUTPUT_DIR = PROJECT_DIR / "result"
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp"}
 PREVIEW_SIZE = (620, 650)
 MODEL_OPTIONS = {
+    "Robot Custom (POC · 학습된 로봇 객체 탐지 모델)": "best.pt",
     "YOLOv8n (Low · 가장 가벼움 · 빠른 객체 탐지/저사양 CPU에 적합)": "yolov8n.pt",
     "YOLOv8m (Advanced · 정확도와 속도의 균형 · 일반 객체 탐지에 적합)": "yolov8m.pt",
     "YOLO11m-seg (Advanced · 객체 윤곽 마스크 · 정밀 영역 분할에 특화)": "yolo11m-seg.pt",
 }
 MODEL_FILENAMES = tuple(dict.fromkeys(MODEL_OPTIONS.values()))
+LOCAL_MODEL_FILENAMES = {"best.pt"}
+DOWNLOADABLE_MODEL_FILENAMES = tuple(
+    filename for filename in MODEL_FILENAMES if filename not in LOCAL_MODEL_FILENAMES
+)
 DEFAULT_MODEL_LABEL = next(
     label for label, filename in MODEL_OPTIONS.items() if filename == "yolo11m-seg.pt"
 )
@@ -34,7 +39,7 @@ def missing_model_paths(project_dir: Path | None = None) -> list[Path]:
     root = PROJECT_DIR if project_dir is None else project_dir
     return [
         root / filename
-        for filename in MODEL_FILENAMES
+        for filename in DOWNLOADABLE_MODEL_FILENAMES
         if not (root / filename).is_file()
     ]
 
@@ -486,7 +491,11 @@ class YoloViewer(tk.Tk):
                 self.loaded_model_path = active_model_path
 
             print(f"[analysis start] model={active_model_path.name}, images={len(targets)}")
-            results = self.model([str(path) for path in targets], verbose=False)
+            results = self.model(
+                [str(path) for path in targets],
+                verbose=False,
+                conf=0.05,
+            )
             for index, (image_path, result) in enumerate(
                 zip(targets, results, strict=True),
                 start=1,
