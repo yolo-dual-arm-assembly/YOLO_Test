@@ -16,6 +16,8 @@ from yolo_app.config import (
     OMX_TEACHING_PATH,
     PROJECT_DIR,
 )
+from yolo_app.serial_ports import default_omx_port
+
 CameraInUseCallback = Callable[[], bool]
 ShutdownReadyCallback = Callable[[], None]
 
@@ -72,7 +74,7 @@ class OmxPanel(ttk.LabelFrame):
         self.columnconfigure((1, 3), weight=1)
 
         ttk.Label(self, text="포트").grid(row=0, column=0, sticky="w")
-        self.port_var = tk.StringVar(value="/dev/ttyACM0")
+        self.port_var = tk.StringVar(value=default_omx_port())
         self.port_entry = ttk.Entry(self, textvariable=self.port_var, width=16)
         self.port_entry.grid(row=0, column=1, sticky="ew", padx=(4, 8))
 

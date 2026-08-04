@@ -1,6 +1,7 @@
 """ROBOTIS OMX 로봇팔 제어 모듈 (DYNAMIXEL SDK 직접 제어).
 
-연결: USB-C → /dev/ttyACM0, Protocol 2.0, Baudrate 1,000,000
+연결: USB-C → 리눅스 /dev/ttyACM0 · 윈도우 COMx, Protocol 2.0,
+Baudrate 1,000,000
 
 사용 예::
 
@@ -18,6 +19,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
+
+from yolo_app.serial_ports import default_omx_port
 
 try:
     from dynamixel_sdk import (
@@ -107,7 +110,8 @@ class JointState:
 @dataclass
 class OmxConfig:
     """OmxController 설정값."""
-    port: str = "/dev/ttyACM0"
+    # 포트 이름 규칙이 OS마다 달라 고정값 대신 연결 상태를 보고 정한다.
+    port: str = field(default_factory=default_omx_port)
     baudrate: int = 1_000_000
     protocol: float = 2.0
     joint_ids: list[int] = field(default_factory=lambda: [11, 12, 13, 14, 15])

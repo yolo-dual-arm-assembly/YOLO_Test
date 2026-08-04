@@ -31,12 +31,14 @@ from yolo_app.omx_controller import (
     dxl_to_angle,
     gripper_percent_to_dxl,
 )
+from yolo_app.serial_ports import default_omx_port
 from yolo_app.ui_fonts import configure_korean_fonts
 
 
 class OmxGuiApp(tk.Tk):
-    def __init__(self, port: str = "/dev/ttyACM0") -> None:
+    def __init__(self, port: str | None = None) -> None:
         super().__init__()
+        port = port or default_omx_port()
         configure_korean_fonts(self)
         self.title("ROBOTIS OMX Joint Controller")
         self.geometry("640x580")
@@ -390,7 +392,9 @@ class OmxGuiApp(tk.Tk):
 def main() -> None:
     parser = argparse.ArgumentParser(description="ROBOTIS OMX 수동 관절 제어 GUI")
     parser.add_argument(
-        "--port", default="/dev/ttyACM0", help="OMX 시리얼 포트"
+        "--port",
+        default=default_omx_port(),
+        help="OMX 시리얼 포트 (기본: 연결된 USB 시리얼 포트 자동 선택)",
     )
     args = parser.parse_args()
     app = OmxGuiApp(port=args.port)

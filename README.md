@@ -1,20 +1,55 @@
 # YOLO 이미지 분석 도구
 
 `object` 폴더의 이미지를 YOLO 모델로 분석하고, 원본 이미지와 분석 결과를
-나란히 보여 주는 Windows용 Tkinter GUI 프로그램입니다. 분석 결과는 모델별로
-`result` 폴더에 저장됩니다.
+나란히 보여 주는 Tkinter GUI 프로그램입니다. Windows와 Linux에서 같은 코드로
+동작합니다. 분석 결과는 모델별로 `result` 폴더에 저장됩니다.
 
 ## 1. 준비 사항
 
-- Windows 10 또는 Windows 11
-- 64비트 Python 3.13 권장
+- Windows 10/11 또는 Linux
+- **64비트 Python 3.11 이상** (3.11 · 3.12 · 3.13 사용 가능)
 - 인터넷 연결(최초 패키지 및 모델 설치 시 필요)
 
-이 프로젝트는 Python 3.13 기준으로 사용합니다. MSYS2의 Python이나 아직 패키지
-지원이 충분하지 않은 새 Python 버전 대신
-[python.org](https://www.python.org/downloads/)에서 설치한 64비트 Python 3.13을
-권장합니다. Python 설치 화면에서는 `Add python.exe to PATH` 또는 Python
-Launcher 설치 항목을 선택합니다.
+### Python 인터프리터
+
+| 항목 | 값 |
+| --- | --- |
+| 최소 버전 | **3.11** (`pyproject.toml`의 `requires-python = ">=3.11"`) |
+| 동작 확인 버전 | **3.11.9** (64비트, Windows 11) |
+| 권장 배포판 | [python.org](https://www.python.org/downloads/) 공식 64비트 빌드 |
+| 확인 명령 | `python -c "import sys; print(sys.version, sys.executable)"` |
+
+버전 표시에 `64 bit (AMD64)`와 `3.11` 이상이 함께 나와야 합니다.
+
+**MSYS2/MinGW Python(`C:\msys64\ucrt64\bin\python.exe`)은 사용할 수 없습니다.**
+`pip install`로도 해결되지 않습니다. PyPI가 배포하는 `torch`·`opencv-python`
+휠은 표준 CPython(`win_amd64`) ABI용이라 MinGW 빌드에는 설치되지 않고,
+`torch`는 MSYS2 빌드 자체가 없습니다.
+
+Windows에서 Python 설치 시 `Add python.exe to PATH`와 Python Launcher 항목을
+선택하십시오. Linux에서는 배포판 패키지의 `python3`(3.11 이상)와 함께
+`python3-tk`(Tkinter)가 설치되어 있어야 합니다.
+
+```bash
+sudo apt install python3 python3-venv python3-tk   # Debian/Ubuntu 예시
+```
+
+### 인터프리터를 잘못 골라도 실행됩니다
+
+`main.py`는 무거운 라이브러리를 불러오기 전에 현재 Python을 먼저 점검합니다.
+의존성이 없는 Python(예: MSYS2 Python, 패키지를 설치하지 않은 다른 Python)으로
+실행하면, 의존성이 설치된 Python을 직접 찾아 그쪽으로 넘겨 실행합니다.
+
+```text
+$ C:/msys64/ucrt64/bin/python.exe main.py
+[bootstrap] 의존성이 설치된 Python으로 실행합니다: C:\...\Python311\python.exe
+→ 그대로 GUI가 열립니다
+```
+
+찾는 순서는 프로젝트 가상환경(`.venv`) → Windows Python Launcher(`py -0p`)가
+알려 주는 설치 목록 → `PATH`의 `python`/`python3`이며, Windows와 Linux 모두
+같은 방식으로 동작합니다. 쓸 수 있는 Python이 하나도 없을 때만 무엇을 설치해야
+하는지 안내하고 멈춥니다.
 
 프로젝트 최상위 폴더에는 최소한 다음 파일과 폴더가 있어야 합니다.
 
@@ -36,20 +71,23 @@ YOLO/
 `yolov8n.pt`, `yolov8m.pt`, `yolo11m-seg.pt`가 없으면 프로그램을 처음 실행할 때
 Ultralytics 공식 배포본을 프로젝트 최상위 폴더에 자동으로 다운로드합니다.
 
-## 2. 프로젝트 폴더에서 PowerShell 열기
+## 2. 프로젝트 폴더에서 터미널 열기
 
-파일 탐색기에서 프로젝트 폴더를 연 뒤 주소 표시줄에 `powershell`을 입력하거나,
-PowerShell에서 직접 프로젝트 폴더로 이동합니다.
+**Windows** — 파일 탐색기에서 프로젝트 폴더를 연 뒤 주소 표시줄에
+`powershell`을 입력하거나, PowerShell에서 직접 프로젝트 폴더로 이동합니다.
 
 ```powershell
 Set-Location "C:\프로젝트를\저장한\경로\YOLO"
-```
-
-현재 위치가 맞는지 확인합니다.
-
-```powershell
 Get-Location
 Get-ChildItem
+```
+
+**Linux**
+
+```bash
+cd ~/프로젝트를/저장한/경로/YOLO
+pwd
+ls
 ```
 
 출력 목록에 `main.py`와 `requirements.txt`가 보여야 합니다. 프로젝트 복사본이
@@ -58,21 +96,15 @@ Get-ChildItem
 
 ## 3. 가상환경 만들기
 
-설치된 Python 목록을 확인합니다.
+가상환경은 OS마다 새로 만들어야 합니다. 실행 파일 경로가 Windows는
+`.venv\Scripts\`, Linux는 `.venv/bin/`으로 달라서 한쪽에서 만든 `.venv`를
+다른 OS로 복사해 쓸 수 없습니다. `.venv/`는 `.gitignore` 대상입니다.
+
+**Windows** — 설치된 Python 목록을 확인하고 3.11 이상으로 만듭니다.
 
 ```powershell
 py -0p
-```
-
-Python 3.13으로 프로젝트 전용 가상환경을 만듭니다.
-
-```powershell
-py -3.13 -m venv .venv
-```
-
-가상환경을 활성화합니다.
-
-```powershell
+py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
@@ -82,6 +114,13 @@ PowerShell 실행 정책 때문에 활성화가 차단되면 현재 PowerShell �
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
+```
+
+**Linux**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 활성화되면 명령 프롬프트 앞에 `(.venv)`가 표시됩니다.
@@ -128,6 +167,13 @@ python -m tkinter
 .\.venv\Scripts\python.exe .\main.py
 ```
 
+Linux에서는 `.venv/bin/python`을 같은 방식으로 지정합니다.
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt
+./.venv/bin/python main.py
+```
+
 ## 5. 분석할 이미지 준비
 
 분석할 이미지를 프로젝트의 `object` 폴더에 넣습니다. 지원 확장자는 다음과
@@ -143,13 +189,21 @@ python -m tkinter
 
 ## 6. 프로그램 실행
 
-가상환경이 활성화된 PowerShell에서 실행합니다.
+프로젝트 폴더에서 `main.py`를 실행합니다. 가상환경을 활성화하지 않았거나
+인터프리터를 잘못 골랐더라도 `main.py`가 알아서 전환하므로 아래 명령이면
+됩니다.
 
 ```powershell
-python .\main.py
+python .\main.py     # Windows (PowerShell)
 ```
 
-같은 프로그램을 패키지 방식으로 실행할 수도 있습니다.
+```bash
+python3 main.py      # Linux
+```
+
+같은 프로그램을 패키지 방식으로 실행할 수도 있습니다. 다만 이 방식에는
+인터프리터 자동 전환이 적용되지 않으므로, 의존성이 설치된 Python으로
+실행해야 합니다.
 
 ```powershell
 python -m yolo_app
@@ -220,8 +274,14 @@ result/
 ### `ModuleNotFoundError: No module named 'PIL'`
 
 `PIL`은 `Pillow` 패키지가 제공하는 모듈입니다. 대부분 패키지를 설치한 Python과
-프로그램을 실행한 Python이 서로 다를 때 이 오류가 발생합니다. 프로젝트 폴더에서
-가상환경의 Python을 명시해 다시 설치하고 실행합니다.
+프로그램을 실행한 Python이 서로 다를 때 이 오류가 발생합니다.
+
+`main.py`로 실행하면 이 상황을 자동으로 넘겨주므로 보통은 이 오류를 보지
+않습니다. `python -m yolo_app`이나 `yolo_demo.py`처럼 다른 진입점을 쓰다가
+오류가 났다면 `python main.py`로 실행해 보십시오.
+
+직접 고치려면 프로젝트 폴더에서 가상환경의 Python을 명시해 다시 설치하고
+실행합니다.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
@@ -251,9 +311,14 @@ result/
 
 ### `No module named '_tkinter'` 또는 GUI 창이 열리지 않음
 
-현재 Python에 Tkinter가 포함되지 않았을 수 있습니다. python.org의 Windows용
-64비트 Python 3.13을 설치할 때 `tcl/tk and IDLE` 항목을 포함한 뒤 가상환경을
-다시 만드십시오.
+현재 Python에 Tkinter가 포함되지 않았을 수 있습니다. Windows는 python.org의
+64비트 Python(3.11 이상)을 설치할 때 `tcl/tk and IDLE` 항목을 포함한 뒤
+가상환경을 다시 만드십시오. Linux는 Tkinter가 별도 패키지입니다.
+
+```bash
+sudo apt install python3-tk    # Debian/Ubuntu
+sudo dnf install python3-tkinter    # Fedora
+```
 
 ### 모델 파일이 없다는 메시지
 
@@ -286,8 +351,23 @@ python -m pip --version
 
 예를 들어 프로그램은 `C:\msys64\ucrt64\bin\python3.14.exe`로 실행하면서 패키지는
 다른 Python 또는 `.venv`에 설치했다면 모듈을 찾을 수 없습니다. VS Code를
-사용한다면 `Python: Select Interpreter`에서 프로젝트의
-`.venv\Scripts\python.exe`를 선택하십시오.
+사용한다면 `Python: Select Interpreter`에서 패키지를 설치한 Python을
+선택하십시오. 프로젝트에 가상환경을 만들었다면 `.venv\Scripts\python.exe`,
+아니면 `C:\Users\<사용자>\AppData\Local\Programs\Python\Python3xx\python.exe`
+같은 표준 설치 경로를 고르면 됩니다.
+
+**MSYS2 Python(`C:\msys64\ucrt64\bin\python.exe`)으로는 실행할 수 없습니다.**
+`pip install`로 의존성을 채우려 해도 실패합니다. PyPI가 제공하는 `torch`,
+`opencv-python`, `numpy` 휠은 표준 CPython(`win_amd64`) ABI용이라 MinGW로 빌드된
+MSYS2 Python에는 설치되지 않고, `torch`는 MSYS2 빌드 자체가 없습니다.
+[python.org](https://www.python.org/downloads/windows/) 배포판이나 가상환경을
+사용하십시오.
+
+VS Code가 자꾸 엉뚱한 Python을 고른다면 `.vscode/settings.json`에
+`python.defaultInterpreterPath`로 인터프리터 경로를 박아 두지 않았는지
+확인합니다. 실행 파일 경로가 리눅스는 `.venv/bin/python`, 윈도우는
+`.venv\Scripts\python.exe`로 달라서, 한쪽 경로를 적어 두면 다른 OS에서는
+그 경로를 찾지 못하고 PATH에 있던 다른 Python이 선택됩니다.
 
 ## 9. 개발 확인
 

@@ -10,12 +10,14 @@ from pathlib import Path
 from yolo_app.omx_controller import OmxConfig
 from yolo_app.omx_taught_vision_runner import OmxTaughtVisionRunner
 from yolo_app.omx_teaching import OmxTeachingDataset
+from yolo_app.serial_ports import default_omx_port
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
 MODEL_PATH = PROJECT_DIR / "yolov8n.pt"
 TEACHING_PATH = PROJECT_DIR / "omx_mouse_teaching.json"
-ROBOT_PORT = "/dev/ttyACM0"
+# 리눅스(/dev/ttyACM0)와 윈도우(COMx)에서 모두 동작하도록 자동 선택한다.
+ROBOT_PORT = default_omx_port()
 CAMERA_INDEX = 0
 
 

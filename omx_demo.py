@@ -25,10 +25,12 @@ from pathlib import Path
 
 from yolo_app.omx_calibration import OmxCalibration
 from yolo_app.omx_controller import OmxController, OmxConfig
+from yolo_app.serial_ports import default_omx_port
 
 
 CALIBRATION_FILE = Path(__file__).parent / "calibration.json"
-DEFAULT_PORT = "/dev/ttyACM0"
+# 리눅스(/dev/ttyACM0)와 윈도우(COMx)에서 모두 동작하도록 자동 선택한다.
+DEFAULT_PORT = default_omx_port()
 
 
 def cmd_test_connection(args: argparse.Namespace) -> None:
@@ -201,7 +203,11 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    p.add_argument("--port", default=DEFAULT_PORT, help="시리얼 포트 (기본: /dev/ttyACM0)")
+    p.add_argument(
+        "--port",
+        default=DEFAULT_PORT,
+        help="시리얼 포트 (기본: 연결된 USB 시리얼 포트 자동 선택)",
+    )
     p.add_argument("--camera", type=int, default=0, help="웹캠 인덱스 (기본: 0)")
 
     group = p.add_mutually_exclusive_group(required=True)
