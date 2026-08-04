@@ -18,7 +18,9 @@ from yolo_app.config import (
 )
 from yolo_app.serial_ports import default_omx_port
 
-CameraInUseCallback = Callable[[], bool]
+# 카메라를 쓸 수 없으면 그 이유를, 쓸 수 있으면 None을 돌려준다.
+CameraBusyCallback = Callable[[], "str | None"]
+CameraIndexCallback = Callable[[], int]
 ShutdownReadyCallback = Callable[[], None]
 
 
@@ -50,7 +52,8 @@ class OmxPanel(ttk.LabelFrame):
         calibration_path: Path = OMX_CALIBRATION_PATH,
         teaching_path: Path = OMX_TEACHING_PATH,
         project_dir: Path = PROJECT_DIR,
-        camera_in_use: CameraInUseCallback | None = None,
+        camera_busy_reason: CameraBusyCallback | None = None,
+        camera_index: CameraIndexCallback | None = None,
     ) -> None:
         super().__init__(master, text="OMX 비전 제어", padding=8)
         self.root = master.winfo_toplevel()
@@ -58,7 +61,9 @@ class OmxPanel(ttk.LabelFrame):
         self.calibration_path = calibration_path
         self.teaching_path = teaching_path
         self.project_dir = project_dir
-        self._camera_in_use = camera_in_use or (lambda: False)
+        self._camera_busy_reason = camera_busy_reason or (lambda: None)
+        # 카메라 선택은 메인 화면의 선택 위젯 하나가 담당한다.
+        self._camera_index = camera_index or (lambda: 0)
 
         self._runner = None
         self._vision_thread: threading.Thread | None = None
@@ -76,14 +81,9 @@ class OmxPanel(ttk.LabelFrame):
         ttk.Label(self, text="포트").grid(row=0, column=0, sticky="w")
         self.port_var = tk.StringVar(value=default_omx_port())
         self.port_entry = ttk.Entry(self, textvariable=self.port_var, width=16)
-        self.port_entry.grid(row=0, column=1, sticky="ew", padx=(4, 8))
-
-        ttk.Label(self, text="카메라").grid(row=0, column=2, sticky="w")
-        self.camera_var = tk.IntVar(value=0)
-        self.camera_spin = ttk.Spinbox(
-            self, from_=0, to=10, textvariable=self.camera_var, width=4
+        self.port_entry.grid(
+            row=0, column=1, columnspan=3, sticky="ew", padx=(4, 0)
         )
-        self.camera_spin.grid(row=0, column=3, sticky="ew", padx=(4, 0))
 
         self.calibrate_button = ttk.Button(
             self, text="1. 좌표 캘리브레이션", command=self.start_calibration
@@ -155,11 +155,10 @@ class OmxPanel(ttk.LabelFrame):
                 parent=self.root,
             )
             return False
-        if self._camera_in_use():
+        camera_busy = self._camera_busy_reason()
+        if camera_busy is not None:
             messagebox.showwarning(
-                "카메라 사용 중",
-                "웹캠 실시간 탐지 창을 먼저 닫으세요.",
-                parent=self.root,
+                "카메라 사용 중", camera_busy, parent=self.root
             )
             return False
         return True
@@ -172,7 +171,7 @@ class OmxPanel(ttk.LabelFrame):
 
             self._calibration_window = OmxCalibrationWindow(
                 self.root,
-                camera_index=self.camera_var.get(),
+                camera_index=self._camera_index(),
                 save_path=self.calibration_path,
                 on_saved=self._calibration_saved,
                 on_closed=self._calibration_closed,
@@ -205,7 +204,7 @@ class OmxPanel(ttk.LabelFrame):
                 model_path=self.model_path,
                 teaching_path=self.teaching_path,
                 port=self.port_var.get().strip(),
-                camera_index=self.camera_var.get(),
+                camera_index=self._camera_index(),
                 on_changed=self._teaching_changed,
                 on_closed=self._teaching_closed,
             )
@@ -273,7 +272,7 @@ class OmxPanel(ttk.LabelFrame):
         self._stop_requested = False
         self._vision_thread = threading.Thread(
             target=self._mouse_approach_worker,
-            args=(self.port_var.get().strip(), self.camera_var.get()),
+            args=(self.port_var.get().strip(), self._camera_index()),
             daemon=True,
         )
         self._vision_thread.start()
@@ -331,7 +330,6 @@ class OmxPanel(ttk.LabelFrame):
         normal_state = "disabled" if running else "normal"
         for widget in (
             self.port_entry,
-            self.camera_spin,
             self.calibrate_button,
             self.manual_button,
             self.teaching_button,

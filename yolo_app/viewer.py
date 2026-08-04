@@ -10,6 +10,7 @@ from PIL import Image, ImageOps, ImageTk
 from ultralytics import YOLO
 
 from yolo_app.analysis import run_analysis
+from yolo_app.camera_select import CameraSelector
 from yolo_app.config import (
     IMAGE_EXTENSIONS,
     INPUT_DIR,
@@ -31,6 +32,7 @@ from yolo_app.ui_fonts import configure_korean_fonts
 from yolo_app.webcam import WebcamWindow
 
 CONSOLE_POLL_MS = 100
+SCANNING_MESSAGE = "연결된 카메라를 확인하는 중입니다. 잠시 후 다시 시도하세요."
 
 
 class YoloViewer(tk.Tk):
@@ -64,6 +66,7 @@ class YoloViewer(tk.Tk):
         )
         self.model_choice = tk.StringVar(value=default_label)
         self.webcam_window: WebcamWindow | None = None
+        self.camera_selector: CameraSelector | None = None
         self.omx_panel: OmxPanel | None = None
         self._console_redirector = ConsoleRedirector()
 
@@ -158,9 +161,19 @@ class YoloViewer(tk.Tk):
             row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0)
         )
 
-        self.omx_panel = OmxPanel(sidebar, camera_in_use=self._webcam_is_open)
-        self.omx_panel.grid(
+        # 웹캠 탐지와 OMX 작업이 같은 카메라를 쓰므로 선택 위젯도 하나만 둔다.
+        self.camera_selector = CameraSelector(sidebar, busy=self._camera_in_use)
+        self.camera_selector.grid(
             row=5, column=0, columnspan=2, sticky="ew", pady=(10, 0)
+        )
+
+        self.omx_panel = OmxPanel(
+            sidebar,
+            camera_busy_reason=self._camera_busy_reason,
+            camera_index=self.camera_selector.selected_index,
+        )
+        self.omx_panel.grid(
+            row=6, column=0, columnspan=2, sticky="ew", pady=(10, 0)
         )
 
     def _build_compare_panel(self) -> None:
@@ -462,22 +475,57 @@ class YoloViewer(tk.Tk):
             self.webcam_window.lift()
             self.webcam_window.focus_force()
             return
+        if self._camera_is_scanning():
+            # 검색은 장치를 직접 열어 보므로, 끝나기 전에 열면 서로 점유해 실패한다.
+            messagebox.showinfo(
+                "카메라 검색 중", SCANNING_MESSAGE, parent=self
+            )
+            return
         if not self._ensure_model_available():
             return
+        camera_index = (
+            self.camera_selector.selected_index()
+            if self.camera_selector is not None
+            else 0
+        )
         # 배치 분석과 스레드 충돌이 없도록 웹캠 창은 자체 모델 인스턴스를 로드한다.
         self.webcam_window = WebcamWindow(
             self,
             model_path=self.model_path,
             input_dir=self.input_dir,
             on_snapshot=lambda _path: self.refresh_images(),
+            camera_index=camera_index,
         )
-        self.status.set(f"웹캠 실시간 탐지 시작: {self.model_path.name}")
+        self.status.set(
+            f"웹캠 실시간 탐지 시작: {self.model_path.name}"
+            f" · 카메라 {camera_index}번"
+        )
 
     def _webcam_is_open(self) -> bool:
         return (
             self.webcam_window is not None
             and bool(self.webcam_window.winfo_exists())
         )
+
+    def _camera_is_scanning(self) -> bool:
+        return (
+            self.camera_selector is not None
+            and self.camera_selector.is_scanning()
+        )
+
+    def _camera_in_use(self) -> bool:
+        """웹캠 창이나 OMX 작업이 카메라를 점유 중인지 확인한다."""
+        if self._webcam_is_open():
+            return True
+        return self.omx_panel is not None and self.omx_panel.is_busy()
+
+    def _camera_busy_reason(self) -> str | None:
+        """OMX 작업이 카메라를 못 쓰는 이유. 쓸 수 있으면 None."""
+        if self._webcam_is_open():
+            return "웹캠 실시간 탐지 창을 먼저 닫으세요."
+        if self._camera_is_scanning():
+            return SCANNING_MESSAGE
+        return None
 
     def _ensure_model_available(self) -> bool:
         if self.model_path.exists():
