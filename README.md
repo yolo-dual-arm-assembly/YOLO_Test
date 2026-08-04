@@ -20,7 +20,8 @@ Launcher 설치 항목을 선택합니다.
 
 ```text
 YOLO/
-├─ yolo_demo.py
+├─ main.py
+├─ yolo_demo.py  # 이전 실행 방식 호환용
 ├─ yolo_app/
 ├─ train_model.py
 ├─ requirements.txt
@@ -51,7 +52,7 @@ Get-Location
 Get-ChildItem
 ```
 
-출력 목록에 `yolo_demo.py`와 `requirements.txt`가 보여야 합니다. 프로젝트 복사본이
+출력 목록에 `main.py`와 `requirements.txt`가 보여야 합니다. 프로젝트 복사본이
 여러 개 있다면, 패키지를 설치한 폴더와 프로그램을 실행하는 폴더가 같은지 특히
 확인하십시오.
 
@@ -124,7 +125,7 @@ python -m tkinter
 이 방식을 사용했다면 실행할 때도 같은 Python을 직접 지정합니다.
 
 ```powershell
-.\.venv\Scripts\python.exe .\yolo_demo.py
+.\.venv\Scripts\python.exe .\main.py
 ```
 
 ## 5. 분석할 이미지 준비
@@ -145,8 +146,23 @@ python -m tkinter
 가상환경이 활성화된 PowerShell에서 실행합니다.
 
 ```powershell
-python .\yolo_demo.py
+python .\main.py
 ```
+
+같은 프로그램을 패키지 방식으로 실행할 수도 있습니다.
+
+```powershell
+python -m yolo_app
+```
+
+프로젝트를 패키지로 설치했다면 어느 폴더에서든 다음 명령을 사용할 수 있습니다.
+
+```powershell
+yolo-app
+```
+
+기존 `python .\yolo_demo.py` 실행 방식도 호환을 위해 계속 동작하지만,
+새 문서와 실행 설정에서는 `main.py`를 사용합니다.
 
 프로그램을 실행하면 `object` 폴더의 이미지 목록이 왼쪽에 표시됩니다. 이미지를
 선택하면 오른쪽에서 원본과 분석 결과를 비교할 수 있습니다. 기존 결과가 있으면
@@ -186,7 +202,20 @@ result/
 모델별 폴더가 분리되어 있으므로 모델을 전환해도 다른 모델의 결과를 덮어쓰지
 않습니다.
 
-## 7. 자주 발생하는 오류
+## 7. OMX Mouse 관절 교시
+
+메인 GUI의 `OMX 비전 제어`에서 `Mouse 관절 교시 모드`를 엽니다. 로봇을 연결한
+뒤 `Mouse 위치 고정`을 먼저 누르고, 그리퍼를 수동으로 해당 위치 위에 맞춘 다음
+`고정 위치 + 실제 관절값 저장`을 누릅니다. 로봇팔이 Mouse를 가려도 고정된 좌표가
+유지됩니다. 화면의 좌상·상·우상, 좌·중앙·우, 좌하·하·우하에 Mouse를 놓아 9개
+교시점을 만드는 것을 권장합니다.
+
+교시점이 4개 이상이고 서로 둘러싸인 영역이 만들어지면 `교시값으로 Mouse 이동`을
+사용할 수 있습니다. 자동 이동은 교시 영역 안에서만 허용되며, 카메라 위치나
+해상도가 변경되면 교시 데이터를 다시 만들어야 합니다. 교시 데이터는 로컬 파일
+`omx_mouse_teaching.json`에 저장됩니다.
+
+## 8. 자주 발생하는 오류
 
 ### `ModuleNotFoundError: No module named 'PIL'`
 
@@ -197,7 +226,7 @@ result/
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
 .\.venv\Scripts\python.exe -c "from PIL import Image; print('Pillow 정상')"
-.\.venv\Scripts\python.exe .\yolo_demo.py
+.\.venv\Scripts\python.exe .\main.py
 ```
 
 `pip install ...`처럼 `pip`만 단독으로 실행하지 말고, 항상
@@ -243,7 +272,7 @@ result/
 
 ### 입력 이미지가 없다는 메시지
 
-이미지를 `yolo_demo.py` 옆이 아니라 `object` 폴더 안에 넣었는지, 파일 확장자가
+이미지를 `main.py` 옆이 아니라 `object` 폴더 안에 넣었는지, 파일 확장자가
 지원 목록에 포함되는지 확인한 뒤 프로그램을 다시 실행합니다.
 
 ### 설치는 했는데 계속 같은 모듈 오류가 발생함
@@ -260,12 +289,12 @@ python -m pip --version
 사용한다면 `Python: Select Interpreter`에서 프로젝트의
 `.venv\Scripts\python.exe`를 선택하십시오.
 
-## 8. 개발 확인
+## 9. 개발 확인
 
 코드를 수정한 뒤에는 최소한 문법 검사를 실행합니다.
 
 ```powershell
-python -m compileall yolo_app yolo_demo.py train_model.py
+python -m compileall yolo_app main.py yolo_demo.py train_model.py
 ```
 
 단위 테스트(모델 다운로드·분석 루프 로직)는 다음과 같이 실행합니다.

@@ -2,11 +2,15 @@
 name = "yolo-demo"
 version = "0.1.0"
 description = "object 폴더 이미지를 YOLO 모델로 분석해 원본/결과를 비교하는 Tkinter 데스크톱 도구"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "Pillow==11.3.0",
     "ultralytics==8.4.102",
+    "dynamixel-sdk==4.0.5",
 ]
+
+[project.scripts]
+yolo-app = "yolo_app.viewer:main"
 
 [project.optional-dependencies]
 dev = ["pytest"]

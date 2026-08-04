@@ -26,6 +26,9 @@ from yolo_app.models import (
     download_model,
     missing_model_paths,
 )
+from yolo_app.omx_panel import OmxPanel
+from yolo_app.ui_fonts import configure_korean_fonts
+from yolo_app.webcam import WebcamWindow
 
 CONSOLE_POLL_MS = 100
 
@@ -35,6 +38,7 @@ class YoloViewer(tk.Tk):
         self, input_dir: Path = INPUT_DIR, output_dir: Path = OUTPUT_DIR
     ) -> None:
         super().__init__()
+        self.ui_font_family, _ = configure_korean_fonts(self)
         self.title("YOLO 이미지 분석 비교")
         self.geometry("1500x850")
         self.minsize(1050, 650)
@@ -59,6 +63,8 @@ class YoloViewer(tk.Tk):
             if spec.filename == DEFAULT_MODEL_FILENAME
         )
         self.model_choice = tk.StringVar(value=default_label)
+        self.webcam_window: WebcamWindow | None = None
+        self.omx_panel: OmxPanel | None = None
         self._console_redirector = ConsoleRedirector()
 
         self._build_ui()
@@ -89,7 +95,11 @@ class YoloViewer(tk.Tk):
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.rowconfigure(3, weight=1)
 
-        ttk.Label(sidebar, text="모델 선택", font=("", 12, "bold")).grid(
+        ttk.Label(
+            sidebar,
+            text="모델 선택",
+            font=(self.ui_font_family, 12, "bold"),
+        ).grid(
             row=0, column=0, columnspan=2, sticky="w"
         )
         self.model_combo = ttk.Combobox(
@@ -104,7 +114,11 @@ class YoloViewer(tk.Tk):
         )
         self.model_combo.bind("<<ComboboxSelected>>", self._on_model_changed)
 
-        ttk.Label(sidebar, text="이미지 목록", font=("", 14, "bold")).grid(
+        ttk.Label(
+            sidebar,
+            text="이미지 목록",
+            font=(self.ui_font_family, 14, "bold"),
+        ).grid(
             row=2, column=0, columnspan=2, sticky="w", pady=(0, 8)
         )
 
@@ -137,6 +151,18 @@ class YoloViewer(tk.Tk):
         )
         self.all_button.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
+        self.webcam_button = ttk.Button(
+            button_frame, text="웹캠 실시간 탐지", command=self.open_webcam
+        )
+        self.webcam_button.grid(
+            row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0)
+        )
+
+        self.omx_panel = OmxPanel(sidebar, camera_in_use=self._webcam_is_open)
+        self.omx_panel.grid(
+            row=5, column=0, columnspan=2, sticky="ew", pady=(10, 0)
+        )
+
     def _build_compare_panel(self) -> None:
         content = ttk.Frame(self, padding=(0, 10, 10, 10))
         content.grid(row=0, column=1, sticky="nsew")
@@ -144,10 +170,18 @@ class YoloViewer(tk.Tk):
         content.columnconfigure(1, weight=0)
         content.rowconfigure(1, weight=1)
 
-        ttk.Label(content, text="변환 전", font=("", 14, "bold")).grid(
+        ttk.Label(
+            content,
+            text="변환 전",
+            font=(self.ui_font_family, 14, "bold"),
+        ).grid(
             row=0, column=0, pady=(0, 8)
         )
-        ttk.Label(content, text="변환 후", font=("", 14, "bold")).grid(
+        ttk.Label(
+            content,
+            text="변환 후",
+            font=(self.ui_font_family, 14, "bold"),
+        ).grid(
             row=0, column=2, pady=(0, 8)
         )
 
@@ -208,6 +242,14 @@ class YoloViewer(tk.Tk):
             self.after(CONSOLE_POLL_MS, self._drain_console)
 
     def _on_close(self) -> None:
+        if self.omx_panel is not None:
+            if not self.omx_panel.request_close(self._finish_close):
+                return
+        self._finish_close()
+
+    def _finish_close(self) -> None:
+        if self.webcam_window is not None and self.webcam_window.winfo_exists():
+            self.webcam_window.close()
         self._console_redirector.restore()
         self.destroy()
 
@@ -407,6 +449,35 @@ class YoloViewer(tk.Tk):
 
     def analyze_all(self) -> None:
         self._run_analysis(self.image_paths)
+
+    def open_webcam(self) -> None:
+        if self.omx_panel is not None and self.omx_panel.is_busy():
+            messagebox.showwarning(
+                "카메라 사용 중",
+                "OMX 캘리브레이션 또는 Mouse 비전 제어를 먼저 종료하세요.",
+                parent=self,
+            )
+            return
+        if self.webcam_window is not None and self.webcam_window.winfo_exists():
+            self.webcam_window.lift()
+            self.webcam_window.focus_force()
+            return
+        if not self._ensure_model_available():
+            return
+        # 배치 분석과 스레드 충돌이 없도록 웹캠 창은 자체 모델 인스턴스를 로드한다.
+        self.webcam_window = WebcamWindow(
+            self,
+            model_path=self.model_path,
+            input_dir=self.input_dir,
+            on_snapshot=lambda _path: self.refresh_images(),
+        )
+        self.status.set(f"웹캠 실시간 탐지 시작: {self.model_path.name}")
+
+    def _webcam_is_open(self) -> bool:
+        return (
+            self.webcam_window is not None
+            and bool(self.webcam_window.winfo_exists())
+        )
 
     def _ensure_model_available(self) -> bool:
         if self.model_path.exists():

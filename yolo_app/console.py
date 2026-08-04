@@ -9,7 +9,7 @@ from typing import TextIO
 CONSOLE_BG = "#1e1e1e"
 CONSOLE_FG = "#d4d4d4"
 CONSOLE_CARET = "#ffffff"
-CONSOLE_FONT = ("Consolas", 10)
+CONSOLE_FONT = "TkFixedFont"
 CONSOLE_MAX_LINES = 1_000
 CONSOLE_TRIM_LINES = 200
 

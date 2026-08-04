@@ -3,12 +3,48 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 
+# Python tooling, coverage, and package build outputs
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local environment/bootstrap files created while setting up this workspace
+/.cache/
+/.conda/
+/.mamba/
+/micromamba_root/
+/bin/
+/get-pip.py
+/virtualenv.pyz
+
 # Local YOLO models and workspace-specific tool settings
 *.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+*.torchscript
+*.tflite
+*_openvino_model/
+*_saved_model/
+*_ncnn_model/
 .vscode/
 .claude/
 .codex/
 .agents/
+
+# Local secrets and operating-system metadata
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+Desktop.ini
 
 # Keep only the empty input/output directories in Git.
 object/*
@@ -25,5 +61,19 @@ train_set/labels/train/*
 !train_set/labels/train/.gitkeep
 train_set/labels/val/*
 !train_set/labels/val/.gitkeep
-train_set/labels/*.cache
+train_set/**/*.cache
 runs/
+
+# Machine-specific camera/robot calibration and taught joint poses
+/calibration.json
+/omx_mouse_teaching.json
+
+# ROS2 workspace build artifacts (built on Linux inside ros2/)
+ros2/build/
+ros2/install/
+ros2/log/
+
+# Runtime logs and crash dumps
+*.log
+/core
+/core.*

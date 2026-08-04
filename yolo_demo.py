@@ -1,4 +1,7 @@
-"""하위호환 진입점 — 구현은 yolo_app 패키지에 있다."""
+"""이전 실행 방식 호환용 진입점.
+
+새 실행 방식은 ``python main.py`` 또는 ``python -m yolo_app``이다.
+"""
 from yolo_app.config import (
     CONFIDENCE_THRESHOLD,
     IMAGE_EXTENSIONS,

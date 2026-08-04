@@ -1,12 +1,12 @@
 import argparse
 from pathlib import Path
 
-from ultralytics import YOLO
-
-
-PROJECT_DIR = Path(__file__).resolve().parent
-DEFAULT_DATA_CONFIG = PROJECT_DIR / "train_set" / "data.yaml"
-DEFAULT_BASE_MODEL = PROJECT_DIR / "yolov8n.pt"
+from yolo_app.training import (
+    DEFAULT_BASE_MODEL,
+    DEFAULT_DATA_CONFIG,
+    TrainingConfig,
+    train,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -35,23 +35,19 @@ def parse_args() -> argparse.Namespace:
 
 
 def train_model(args: argparse.Namespace) -> None:
-    """Fine-tune a pretrained YOLO model with the local dataset."""
-    data_config = args.data.resolve()
-    base_model = args.base_model.resolve()
-    if not data_config.is_file():
-        raise SystemExit(f"데이터셋 정의 파일이 없습니다: {data_config}")
-    if not base_model.is_file():
-        raise SystemExit(f"베이스 모델 파일이 없습니다: {base_model}")
-
-    model = YOLO(base_model)
-    model.train(
-        data=data_config,
+    """CLI 인자를 애플리케이션 학습 설정으로 변환해 실행한다."""
+    config = TrainingConfig(
+        data=args.data,
+        base_model=args.base_model,
         epochs=args.epochs,
-        imgsz=args.imgsz,
-        batch=args.batch,
-        project=PROJECT_DIR / "runs",
-        name=args.name,
+        image_size=args.imgsz,
+        batch_size=args.batch,
+        run_name=args.name,
     )
+    try:
+        train(config)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
 
 
 if __name__ == "__main__":
